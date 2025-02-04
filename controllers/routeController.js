@@ -45,3 +45,29 @@ exports.getRoutes = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+exports.searchRoutes = async (req, res) => {
+  try {
+      const { departure, destination, departureDate } = req.query;
+
+      if (!departure || !destination) {
+          return res.status(400).json({ message: "Vui lòng nhập điểm đi và điểm đến." });
+      }
+
+      // Tìm kiếm các tuyến có điểm đi và điểm đến phù hợp
+      const routes = await Route.find({
+          startPoint: { $regex: new RegExp(departure, "i") },
+          endPoint: { $regex: new RegExp(destination, "i") },
+      });
+
+      if (routes.length === 0) {
+          return res.status(404).json({ message: "Không tìm thấy tuyến đường phù hợp." });
+      }
+
+      res.status(200).json(routes);
+  } catch (error) {
+      console.error("Lỗi tìm kiếm tuyến:", error);
+      res.status(500).json({ message: "Lỗi server." });
+  }
+};
