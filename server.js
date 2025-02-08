@@ -13,6 +13,9 @@ const busCompanyRoutes = require('./routes/busCompanyRoutes');
 const routeRouters = require('./routes/routeRoutes');
 const exchangeRoutes = require('./routes/exchangeRoutes');
 // Kết nối MongoDB
+
+app.use(cors());
+app.use(express.json());
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('MongoDB connected'))
   .catch(err => console.log('Error connecting to MongoDB: ', err));
@@ -20,8 +23,7 @@ mongoose.connect(process.env.MONGO_URI)
   
 
 // Middleware
-app.use(cors());
-app.use(express.json());  // Middleware để parse JSON từ body request
+  // Middleware để parse JSON từ body request
 
 // Sử dụng các routes
 app.use('/api/auth', authRoutes);
