@@ -18,3 +18,11 @@ exports.authenticate = async (req, res, next) => {
         res.status(401).json({ message: 'Token không hợp lệ.' });
     }
 };
+
+// Middleware kiểm tra quyền admin
+exports.adminAuth = async (req, res, next) => {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ message: 'Truy cập bị từ chối. Chỉ dành cho Admin.' });
+    }
+    next();
+};

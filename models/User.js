@@ -5,9 +5,13 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   phone: { type: String, required: true },
-  role: { type: String, default: 'user' },  // user hoặc admin
-  isActive: { type: Boolean, default: true },  // Trạng thái tài khoản
-  lastLogin: { type: Date },  // Lưu thời gian đăng nhập cuối
+  role: { 
+    type: String, 
+    enum: ['user', 'admin'],  // Chỉ chấp nhận 'user' hoặc 'admin'
+    default: 'user' 
+  },  
+  isActive: { type: Boolean, default: true },
+  lastLogin: { type: Date },
   reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
   transactionHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TicketRequest' }],
   createdAt: { type: Date, default: Date.now },

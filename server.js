@@ -12,6 +12,7 @@ const reviewRoutes = require('./routes/reviewRoutes');
 const busCompanyRoutes = require('./routes/busCompanyRoutes');
 const routeRouters = require('./routes/routeRoutes');
 const exchangeRoutes = require('./routes/exchangeRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 // Kết nối MongoDB
 
 app.use(cors());
@@ -33,6 +34,7 @@ app.use('/api/review', reviewRoutes);
 app.use('/api/busCompany', busCompanyRoutes);
 app.use('/api/route', routeRouters);
 app.use('/api/exchange', exchangeRoutes);
+app.use('/api/admin', adminRoutes);
 // Khởi động server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
