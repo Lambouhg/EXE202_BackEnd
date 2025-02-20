@@ -31,16 +31,31 @@ exports.createExchangeRequest = async (req, res) => {
 };
 
 exports.getAllExchangeRequests = async (req, res) => {
-    try {
+  try {
       const exchangeRequests = await ExchangeRequest.find({ status: 'open' })
-        .populate('requester', 'name')
-        .populate('requestedTicket', 'route departureTime seatNumber');
+          .populate('requester', 'name email phone') // Lấy thông tin người tạo yêu cầu
+          .populate({
+              path: 'requestedTicket',
+              select: 'route departureTime seatNumber company', // Lấy thông tin vé yêu cầu
+              populate: { path: 'company', select: 'name' } // Lấy thông tin công ty xe
+          })
+          .populate({
+              path: 'responses.responder',
+              select: 'name email phone' // Lấy thông tin người phản hồi
+          })
+          .populate({
+              path: 'responses.offeredTicket',
+              select: 'route departureTime seatNumber company', // Lấy thông tin vé được đề nghị
+              populate: { path: 'company', select: 'name' } // Lấy thông tin công ty xe
+          });
+
       res.status(200).json(exchangeRequests);
-    } catch (err) {
+  } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Internal server error' });
-    }
-  };
+  }
+};
+
   
   exports.respondToExchangeRequest = async (req, res) => {
     try {
