@@ -1,69 +1,122 @@
+
 const BusCompany = require('../models/BusCompany');
 const Route = require('../models/Route');
+const Ticket = require('../models/Ticket'); // Giả sử có model Ticket
 
-// Tạo nhà xe
-exports.createBusCompany = async (req, res) => {
+// 1. Hiển thị danh sách tuyến đường của một nhà xe
+exports.getRoutesByBusCompany = async (req, res) => {
   try {
-    const { name, contact, address } = req.body;
+    const { companyId } = req.params;
 
-    const newBusCompany = new BusCompany({
-      name,
-      contact,
-      address,
-      createdAt: new Date(),
-    });
+    // Kiểm tra nhà xe có tồn tại không
+    const busCompany = await BusCompany.findById(companyId);
+    if (!busCompany) {
+      return res.status(404).json({ message: 'Nhà xe không tồn tại!' });
+    }
 
-    await newBusCompany.save();
-    return res.status(201).json({ message: 'Thêm nhà xe thành công!', newBusCompany });
+    // Lấy danh sách tuyến đường của nhà xe
+    const routes = await Route.find({ company: companyId });
+
+    return res.status(200).json(routes);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
 
-// Thêm tuyến đường
-exports.createRoute = async (req, res) => {
+// 2. Xem danh sách vé của một tuyến đường
+exports.getTicketsByRoute = async (req, res) => {
   try {
-    // Nhận thông tin từ body
-    const { startPoint, endPoint, price, seats, companyId, duration, distance, departureTimes } = req.body;
+    const { routeId } = req.params;
 
-    // Kiểm tra xem companyId có được truyền vào không
-    if (!companyId) {
-      return res.status(400).json({ message: 'Cần phải cung cấp companyId!' });
+    // Kiểm tra tuyến đường có tồn tại không
+    const route = await Route.findById(routeId);
+    if (!route) {
+      return res.status(404).json({ message: 'Tuyến đường không tồn tại!' });
     }
 
-    // Kiểm tra công ty có tồn tại không
-    const company = await BusCompany.findById(companyId);
-    if (!company) {
-      return res.status(404).json({ message: 'Công ty không tồn tại!' });
-    }
+    // Lấy danh sách vé của tuyến đường
+    const tickets = await Ticket.find({ route: routeId });
 
-    // Kiểm tra xem departureTimes có được truyền vào hay không
-    if (!departureTimes || departureTimes.length === 0) {
-      return res.status(400).json({ message: 'Cần phải cung cấp thời gian khởi hành!' });
-    }
-
-    // Tạo tuyến đường mới
-    const newRoute = new Route({
-      startPoint,
-      endPoint,
-      price,
-      availableSeats: seats,
-      company: companyId, // Liên kết với công ty
-      duration,
-      distance,
-      departureTimes,  // Thêm mảng thời gian khởi hành
-    });
-
-    // Lưu tuyến đường mới vào DB
-    await newRoute.save();
-
-    // Cập nhật danh sách tuyến đường của công ty
-    company.routes.push(newRoute._id);
-    await company.save(); // Lưu lại sau khi cập nhật mối quan hệ
-
-    return res.status(201).json({ message: 'Thêm tuyến thành công!', newRoute });
+    return res.status(200).json(tickets);
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
+// 3. Chỉnh sửa thông tin tuyến đường
+exports.updateRoute = async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const updateData = req.body;
+
+    const updatedRoute = await Route.findByIdAndUpdate(routeId, updateData, { new: true });
+
+    if (!updatedRoute) {
+      return res.status(404).json({ message: 'Tuyến đường không tồn tại!' });
+    }
+
+    return res.status(200).json({ message: 'Cập nhật tuyến đường thành công!', updatedRoute });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+// 4. Xóa vé của một tuyến đường
+exports.deleteTicket = async (req, res) => {
+  try {
+    const { ticketId } = req.params;
+
+    // Kiểm tra vé có tồn tại không
+    const ticket = await Ticket.findById(ticketId);
+    if (!ticket) {
+      return res.status(404).json({ message: 'Vé không tồn tại!' });
+    }
+
+    // Xóa vé
+    await Ticket.findByIdAndDelete(ticketId);
+
+    return res.status(200).json({ message: 'Xóa vé thành công!' });
+  } catch (error) {
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+// // 5. Quản lý vé của tuyến đường (Tạo, Cập nhật, Xóa vé)
+// exports.manageTickets = async (req, res) => {
+//   try {
+//     const { routeId } = req.params;
+//     const { action, ticketData } = req.body; // action: 'create', 'update', 'delete'
+
+//     // Kiểm tra tuyến đường có tồn tại không
+//     const route = await Route.findById(routeId);
+//     if (!route) {
+//       return res.status(404).json({ message: 'Tuyến đường không tồn tại!' });
+//     }
+
+//     let result;
+//     if (action === 'create') {
+//       // Tạo vé mới
+//       const newTicket = new Ticket({ ...ticketData, route: routeId });
+//       await newTicket.save();
+//       result = newTicket;
+//     } else if (action === 'update') {
+//       // Cập nhật vé
+//       const { ticketId, ...updateData } = ticketData;
+//       result = await Ticket.findByIdAndUpdate(ticketId, updateData, { new: true });
+//       if (!result) {
+//         return res.status(404).json({ message: 'Vé không tồn tại!' });
+//       }
+//     } else if (action === 'delete') {
+//       // Xóa vé
+//       const { ticketId } = ticketData;
+//       await Ticket.findByIdAndDelete(ticketId);
+//       result = { message: 'Xóa vé thành công!' };
+//     } else {
+//       return res.status(400).json({ message: 'Hành động không hợp lệ!' });
+//     }
+
+//     return res.status(200).json(result);
+//   } catch (error) {
+//     res.status(500).json({ message: 'Lỗi server', error: error.message });
+//   }
+// };
