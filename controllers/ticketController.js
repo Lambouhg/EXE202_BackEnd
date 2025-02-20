@@ -3,10 +3,37 @@ const Ticket = require('../models/Ticket');
 const Route = require('../models/Route');
 
 // @desc    Get all tickets
+
+// @desc    Get tickets by user ID
+exports.getUserTickets = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Kiểm tra nếu userId hợp lệ
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user ID' });
+    }
+
+    // Lấy tất cả vé của người dùng
+    const tickets = await Ticket.find({ owner: userId })
+      .populate('route', 'startPoint endPoint vehicleType')
+      .populate('company', 'name')
+      .populate('owner', 'name email');
+
+    if (!tickets.length) {
+      return res.status(404).json({ success: false, message: 'No tickets found for this user' });
+    }
+
+    res.status(200).json({ success: true, data: tickets });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.getAllTickets = async (req, res) => {
   try {
     const tickets = await Ticket.find()
-      .populate('route', 'startPoint endPoint')
+      .populate('route', 'startPoint endPoint vehicleType')
       .populate('company', 'name')
       .populate('owner', 'name email');
     res.status(200).json({ success: true, data: tickets });
@@ -18,47 +45,81 @@ exports.getAllTickets = async (req, res) => {
 // @desc    Create a new ticket
 exports.createTicket = async (req, res) => {
   try {
-    const { route, company, owner, departureTime, arrivalTime, seatNumber } = req.body;
+    console.log("Dữ liệu nhận từ frontend:", req.body);
+
+    const { route, owner, seatNumber, departureTime } = req.body;
+
+    // Kiểm tra xem các trường có đủ không
+    if (!route || !owner || !seatNumber || !departureTime) {
+      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đặt vé" });
+    }
+
+    // Kiểm tra tính hợp lệ của departureTime
+    const departureTimeDate = new Date(departureTime);
+    if (isNaN(departureTimeDate.getTime())) {
+      return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ" });
+    }
+
+    console.log("departureTimeDate:", departureTimeDate);
 
     // Kiểm tra xem route có tồn tại không
-    const routeExists = await Route.findById(route);
+    const routeExists = await Route.findById(route).populate("company");
     if (!routeExists) {
-      return res.status(404).json({ success: false, message: 'Route not found' });
+      return res.status(404).json({ success: false, message: "Route không tồn tại" });
     }
 
-    // Kiểm tra số ghế trống
-    if (routeExists.availableSeats <= 0) {
-      return res.status(400).json({ success: false, message: 'No available seats left' });
-    }
-
-    // Lấy giá vé từ giá của route
-    const ticketPrice = routeExists.price;
-
-    // Tạo vé mới
-    const newTicket = new Ticket({
-      route,
-      company,
-      owner,
-      departureTime,
-      arrivalTime,
-      seatNumber,
-      price: ticketPrice, // Sử dụng giá từ route
+    // Kiểm tra departureTime có nằm trong mảng departureTimes của Route không
+    const isDepartureTimeValid = routeExists.departureTimes.some((time) => {
+      return new Date(time).toISOString() === departureTimeDate.toISOString();
     });
 
-    // Lưu vé vào cơ sở dữ liệu
-    const savedTicket = await newTicket.save();
+    if (!isDepartureTimeValid) {
+      return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ với tuyến xe" });
+    }
 
-    // Giảm số ghế trống
+    // Kiểm tra số ghế yêu cầu có hợp lệ không
+    if (typeof seatNumber !== 'string' || parseInt(seatNumber) > routeExists.availableSeats || parseInt(seatNumber) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Số ghế không hợp lệ! Ghế trống: ${routeExists.availableSeats}, yêu cầu: ${seatNumber}`,
+      });
+    }
+
+    // Tính toán giá vé
+    const price = routeExists.price;
+
+    // Tạo vé mới
+    const ticket = new Ticket({
+      route,
+      company: routeExists.company._id,
+      owner,
+      departureTime: departureTimeDate,
+      vehicleType: routeExists.vehicleType,
+      seatNumber,
+      price,
+    });
+
+    // Kiểm tra vé trước khi lưu
+    console.log("Thông tin vé mới:", ticket);
+
+    // Lưu vé vào cơ sở dữ liệu
+    await ticket.save();
+
+    // Cập nhật số ghế trống
     routeExists.availableSeats -= 1;
-    routeExists.tickets.push(savedTicket._id);
     await routeExists.save();
 
-    res.status(201).json({ success: true, data: savedTicket });
+    // Trả về phản hồi thành công
+    console.log("Vé đã được tạo và lưu thành công:", ticket);
+    res.status(201).json({ success: true, data: ticket });
+
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Error creating ticket', error: error.message });
+    console.error("Lỗi khi tạo vé:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 // @desc    Update ticket
 exports.updateTicket = async (req, res) => {
@@ -94,7 +155,7 @@ exports.updateTicket = async (req, res) => {
 // @desc    Delete ticket
 exports.cancelTicket = async (req, res) => {
   try {
-    const { id } = req.params;  // Đảm bảo sử dụng `id` thay vì `ticketId`
+    const { id } = req.params;
 
     // Kiểm tra nếu ticketId là hợp lệ
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -129,11 +190,12 @@ exports.cancelTicket = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error cancelling ticket', error: error.message });
   }
 };
+
 // @desc    Get ticket by ID
 exports.getTicketById = async (req, res) => {
   try {
     const ticket = await Ticket.findById(req.params.id)
-      .populate('route', 'startPoint endPoint')
+      .populate('route', 'startPoint endPoint vehicleType')
       .populate('company', 'name')
       .populate('owner', 'name email');
 
