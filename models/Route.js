@@ -13,7 +13,7 @@ const routeSchema = new mongoose.Schema({
     stops: [String],
     price: { type: Number, required: true },
     distance: { type: Number, required: true },
-    duration: { type: Number, required: true }, // Số phút
+    duration: { type: String, required: true }, // Số phút
     tickets: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }],
     availableSeats: { type: Number },
     departureTimes: [{ type: Date }],
