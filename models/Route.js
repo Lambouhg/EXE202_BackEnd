@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
-
+const Ticket  = require('../models/Ticket');
 const vehicleSeatsMap = {
     Limousine: 9,
     "Ghế ngồi": 45,
     "Giường nằm": 40,
+    "Xe phòng VIP": 24,  // Thêm dòng này
 };
 
 const routeSchema = new mongoose.Schema({

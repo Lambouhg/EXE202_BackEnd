@@ -28,9 +28,9 @@ exports.createRoute = async (req, res) => {
         }
 
         // Kiểm tra loại xe hợp lệ
-        if (!vehicleSeatsMap[vehicleType]) {
-            return res.status(400).json({ message: "Loại xe không hợp lệ!" });
-        }
+        const normalizedVehicleType = Object.keys(vehicleSeatsMap).find(
+            key => key.toLowerCase() === vehicleType.toLowerCase()
+        );
 
         // Kiểm tra tính hợp lệ của departureTimes (mảng các thời gian khởi hành)
         const validDepartureTimes = departureTimes.every(time => {
@@ -46,7 +46,7 @@ exports.createRoute = async (req, res) => {
         if (!/^https?:\/\//.test(image)) {
             return res.status(400).json({ message: "URL ảnh không hợp lệ!" });
         }
-        
+
 
         // Tạo tuyến đường mới với số ghế và thời gian khởi hành
         const newRoute = new Route({
@@ -84,6 +84,9 @@ exports.getRoutes = async (req, res) => {
         const routes = await Route.find().populate({
             path: "company",
             select: "name contact address rating",
+        }).populate({
+            path: "tickets",
+            select: "seatNumber"
         });
 
         return res.status(200).json({ message: "Lấy danh sách tuyến đường thành công!", routes });
@@ -93,34 +96,39 @@ exports.getRoutes = async (req, res) => {
     }
 };
 
+
 // 📌 Tìm kiếm tuyến đường theo điểm đi, điểm đến, ngày khởi hành
 exports.searchRoutes = async (req, res) => {
     try {
         let { departure, destination, departureDate } = req.query;
 
-        if (!departure || !destination) {
-            return res.status(400).json({ message: "Vui lòng nhập điểm đi và điểm đến!" });
+        if (!departure && !destination) {
+            return res.status(400).json({ message: "Vui lòng nhập ít nhất điểm đi hoặc điểm đến!" });
         }
 
-        departure = departure.trim();
-        destination = destination.trim();
+        const query = { $or: [] };
 
-        const query = {
-            startPoint: { $regex: new RegExp(departure, "i") },
-            endPoint: { $regex: new RegExp(destination, "i") },
-        };
+        if (departure && destination) {
+            query.$or.push(
+                { startPoint: { $regex: new RegExp(departure, "i") }, endPoint: { $regex: new RegExp(destination, "i") } },
+                { startPoint: { $regex: new RegExp(destination, "i") }, endPoint: { $regex: new RegExp(departure, "i") } } // Khứ hồi
+            );
+        } else if (departure) {
+            query.$or.push({ startPoint: { $regex: new RegExp(departure, "i") } });
+        } else if (destination) {
+            query.$or.push({ endPoint: { $regex: new RegExp(destination, "i") } });
+        }
 
         if (departureDate) {
             const date = new Date(departureDate);
-            if (isNaN(date.getTime())) {
-                return res.status(400).json({ message: "Ngày khởi hành không hợp lệ!" });
+            if (!isNaN(date.getTime())) {
+                query.departureTimes = { $gte: date };
             }
-            query.departureTimes = { $gte: date };
         }
 
         const routes = await Route.find(query).populate({
             path: "company",
-            select: "name contact address rating",
+            select: "name contact address rating"
         });
 
         if (routes.length === 0) {

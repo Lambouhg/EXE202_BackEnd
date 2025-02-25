@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const Route = require('../models/Route');
 const ticketSchema = new mongoose.Schema({
     route: { type: mongoose.Schema.Types.ObjectId, ref: 'Route', required: true },
     company: { type: mongoose.Schema.Types.ObjectId, ref: 'BusCompany', required: true },

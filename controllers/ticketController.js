@@ -49,12 +49,10 @@ exports.createTicket = async (req, res) => {
 
     const { route, owner, seatNumber, departureTime } = req.body;
 
-    // Kiểm tra xem các trường có đủ không
     if (!route || !owner || !seatNumber || !departureTime) {
       return res.status(400).json({ success: false, message: "Thiếu dữ liệu đặt vé" });
     }
 
-    // Kiểm tra tính hợp lệ của departureTime
     const departureTimeDate = new Date(departureTime);
     if (isNaN(departureTimeDate.getTime())) {
       return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ" });
@@ -62,13 +60,11 @@ exports.createTicket = async (req, res) => {
 
     console.log("departureTimeDate:", departureTimeDate);
 
-    // Kiểm tra xem route có tồn tại không
     const routeExists = await Route.findById(route).populate("company");
     if (!routeExists) {
       return res.status(404).json({ success: false, message: "Route không tồn tại" });
     }
 
-    // Kiểm tra departureTime có nằm trong mảng departureTimes của Route không
     const isDepartureTimeValid = routeExists.departureTimes.some((time) => {
       return new Date(time).toISOString() === departureTimeDate.toISOString();
     });
@@ -77,7 +73,6 @@ exports.createTicket = async (req, res) => {
       return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ với tuyến xe" });
     }
 
-    // Kiểm tra số ghế yêu cầu có hợp lệ không
     if (typeof seatNumber !== 'string' || parseInt(seatNumber) > routeExists.availableSeats || parseInt(seatNumber) <= 0) {
       return res.status(400).json({
         success: false,
@@ -85,10 +80,8 @@ exports.createTicket = async (req, res) => {
       });
     }
 
-    // Tính toán giá vé
     const price = routeExists.price;
 
-    // Tạo vé mới
     const ticket = new Ticket({
       route,
       company: routeExists.company._id,
@@ -99,23 +92,17 @@ exports.createTicket = async (req, res) => {
       price,
     });
 
-    // Kiểm tra vé trước khi lưu
-    console.log("Thông tin vé mới:", ticket);
-
-    // Lưu vé vào cơ sở dữ liệu
     await ticket.save();
 
-    // Cập nhật số ghế trống
+    // Cập nhật route bằng cách thêm ticket vào mảng tickets
+    routeExists.tickets.push(ticket._id);
     routeExists.availableSeats -= 1;
     await routeExists.save();
 
-    // Trả về phản hồi thành công
-    console.log("Vé đã được tạo và lưu thành công:", ticket);
-    res.status(201).json({ success: true, data: ticket });
-
+    res.status(201).json({ success: true, message: "Đặt vé thành công", ticket });
   } catch (error) {
-    console.error("Lỗi khi tạo vé:", error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Lỗi khi đặt vé:", error);
+    res.status(500).json({ success: false, message: "Lỗi server", error: error.message });
   }
 };
 
