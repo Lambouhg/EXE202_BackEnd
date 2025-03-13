@@ -2,7 +2,12 @@ const mongoose = require('mongoose');
 const Ticket = require('../models/Ticket');
 const Route = require('../models/Route');
 
-// @desc    Get all tickets
+const vehicleSeatsMap = {
+  Limousine: 9,
+  "Ghế ngồi": 45,
+  "Giường nằm": 40,
+  "Xe phòng VIP": 24,
+};
 
 // @desc    Get tickets by user ID
 exports.getUserTickets = async (req, res) => {
@@ -72,13 +77,13 @@ exports.createTicket = async (req, res) => {
     if (!isDepartureTimeValid) {
       return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ với tuyến xe" });
     }
-
-    if (typeof seatNumber !== 'string' || parseInt(seatNumber) > routeExists.availableSeats || parseInt(seatNumber) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Số ghế không hợp lệ! Ghế trống: ${routeExists.availableSeats}, yêu cầu: ${seatNumber}`,
-      });
-    }
+    const validSeatNumbers = Array.from({ length: vehicleSeatsMap[routeExists.vehicleType] }, (_, i) => (i + 1).toString());
+if (!validSeatNumbers.includes(seatNumber)) {
+  return res.status(400).json({
+    success: false,
+    message: `Số ghế không hợp lệ! Tổng số ghế: ${vehicleSeatsMap[routeExists.vehicleType]}, yêu cầu: ${seatNumber}`,
+  });
+}
 
     const price = routeExists.price;
 

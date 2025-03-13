@@ -90,11 +90,42 @@ exports.getBusCompanies = async (req, res) => {
 
 exports.createBusCompany = async (req, res) => {
     try {
-        const newCompany = new BusCompany(req.body);
+        const { userId, name, contact, address, imageUrl } = req.body;
+
+        // Kiểm tra user có tồn tại không
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User không tồn tại!' });
+        }
+
+        // Kiểm tra user đã có công ty chưa
+        if (user.company) {
+            return res.status(400).json({ message: 'User này đã sở hữu một nhà xe!' });
+        }
+
+        // Tạo nhà xe mới
+        const newCompany = new BusCompany({
+            name,
+            owner: userId,
+            contact,
+            address,
+            imageUrl
+        });
+
         await newCompany.save();
-        res.status(201).json(newCompany);
+
+        // Cập nhật companyId cho user
+        user.company = newCompany._id;
+        await user.save();
+
+        return res.status(201).json({ 
+            message: 'Tạo nhà xe thành công!',
+            company: newCompany
+        });
+
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        console.error(error);
+        return res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau!' });
     }
 };
 

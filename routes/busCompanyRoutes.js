@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const busCompanyController = require('../controllers/busCompanyController');
 
-// 1. Lấy danh sách tuyến đường của một nhà xe
-router.get('/:companyId', busCompanyController.getRoutesByBusCompany);
+router.get('/routes/:userId', busCompanyController.getRoutesByUserId);
 
 // 2. Xem danh sách vé của một tuyến đường
 router.get('/route/:routeId', busCompanyController.getTicketsByRoute);

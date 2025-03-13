@@ -4,24 +4,29 @@ const Route = require('../models/Route');
 const Ticket = require('../models/Ticket'); // Giả sử có model Ticket
 
 // 1. Hiển thị danh sách tuyến đường của một nhà xe
-exports.getRoutesByBusCompany = async (req, res) => {
+exports.getRoutesByUserId = async (req, res) => {
   try {
-    const { companyId } = req.params;
+    const { userId } = req.params; // Lấy userId từ URL params
 
-    // Kiểm tra nhà xe có tồn tại không
-    const busCompany = await BusCompany.findById(companyId);
+    if (!userId) {
+      return res.status(400).json({ message: 'Thiếu userId!' });
+    }
+
+    // Tìm nhà xe do user sở hữu
+    const busCompany = await BusCompany.findOne({ owner: userId });
     if (!busCompany) {
-      return res.status(404).json({ message: 'Nhà xe không tồn tại!' });
+      return res.status(404).json({ message: 'Người dùng không sở hữu nhà xe nào!' });
     }
 
     // Lấy danh sách tuyến đường của nhà xe
-    const routes = await Route.find({ company: companyId });
+    const routes = await Route.find({ company: busCompany._id });
 
     return res.status(200).json(routes);
   } catch (error) {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
 
 // 2. Xem danh sách vé của một tuyến đường
 exports.getTicketsByRoute = async (req, res) => {

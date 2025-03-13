@@ -15,7 +15,7 @@ router.delete('/users/:id', authenticate, adminController.deleteUser);  // DELET
 
 // --- Quản lý Nhà Xe ---
 router.get('/bus-companies', authenticate, adminController.getBusCompanies);  // GET tất cả nhà xe
-router.post('/bus-companies', authenticate, adminController.createBusCompany);  // POST tạo nhà xe mới
+router.post('/bus-companies' ,adminController.createBusCompany);  // POST tạo nhà xe mới
 router.put('/bus-companies/:id', authenticate, adminController.updateBusCompany);  // PUT cập nhật nhà xe
 router.patch('/bus-companies/:id', authenticate, adminController.partialUpdateBusCompany);  // PATCH cập nhật phần nhà xe
 router.delete('/bus-companies/:id', authenticate, adminController.deleteBusCompany);  // DELETE xóa nhà xe

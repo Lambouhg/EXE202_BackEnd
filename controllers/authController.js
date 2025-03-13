@@ -48,38 +48,60 @@ exports.login = async (req, res) => {
 };
 
 
-// đăng kí 
 exports.register = async (req, res) => {
-    try {
-      const { name, email, password, phone } = req.body;
-  
-      // Kiểm tra xem dữ liệu có hợp lệ không
-      if (!name || !email || !password || !phone) {
-        return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin!' });
-      }
-  
-      // Kiểm tra xem email đã tồn tại chưa
-      const userExist = await User.findOne({ email });
-      if (userExist) {
-        return res.status(400).json({ message: 'Email đã tồn tại!' });
-      }
-  
-      // Mã hóa mật khẩu
-      const hashedPassword = await bcrypt.hash(password, 10);
-  
-      // Tạo người dùng mới
-      const newUser = new User({
-        name,
-        email,
-        password: hashedPassword,
-        phone,
-        role: 'user',
-      });
-  
-      await newUser.save();
-      return res.status(201).json({ message: 'Đăng ký thành công!' });
-    } catch (error) {
-      console.error(error); // Log lỗi để dễ dàng debug
-      return res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau!' });
+  try {
+    const { name, email, password, phone, companyId } = req.body;
+
+    // Kiểm tra dữ liệu đầu vào
+    if (!name || !email || !password || !phone) {
+      return res.status(400).json({ message: 'Vui lòng cung cấp đầy đủ thông tin!' });
     }
-  };
+
+    // Kiểm tra email đã tồn tại chưa
+    const userExist = await User.findOne({ email });
+    if (userExist) {
+      return res.status(400).json({ message: 'Email đã tồn tại!' });
+    }
+
+    // Mã hóa mật khẩu
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Nếu có `companyId` thì kiểm tra xem có tồn tại không
+    let company = null;
+    if (companyId) {
+      const existingCompany = await BusCompany.findById(companyId);
+      if (!existingCompany) {
+        return res.status(400).json({ message: 'Công ty không tồn tại!' });
+      }
+      company = companyId; // Nếu tồn tại, gán companyId vào user
+    }
+
+    // Tạo user mới
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      phone,
+      role: 'user',
+      company,  // 👈 Gán companyId nếu có, nếu không thì null
+    });
+
+    await newUser.save();
+    
+    return res.status(201).json({ 
+      message: 'Đăng ký thành công!', 
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+        company: newUser.company, // 👈 Trả về companyId để kiểm tra
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: 'Lỗi server, vui lòng thử lại sau!' });
+  }
+};

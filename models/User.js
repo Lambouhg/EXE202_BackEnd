@@ -7,11 +7,16 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['user', 'admin'],  // Chỉ chấp nhận 'user' hoặc 'admin'
+    enum: ['user', 'admin', 'company'],  
     default: 'user' 
   },  
   isActive: { type: Boolean, default: true },
   lastLogin: { type: Date },
+  company: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'BusCompany', 
+    default: null  
+  }, 
   reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
   transactionHistory: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TicketRequest' }],
   createdAt: { type: Date, default: Date.now },

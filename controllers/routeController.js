@@ -1,6 +1,7 @@
 const Route = require('../models/Route');
 const BusCompany = require('../models/BusCompany');
-
+const mongoose = require('mongoose');
+const Ticket = require('../models/Ticket');
 const vehicleSeatsMap = {
     Limousine: 9,
     "Ghế ngồi": 45,
@@ -8,8 +9,35 @@ const vehicleSeatsMap = {
 };
 
 
-// 📌 Tạo tuyến đường mới
+exports.getBookedSeats = async (req, res) => {
+    try {
+        // Lấy routeId từ request params
+        const { routeId } = req.params;
 
+        // Kiểm tra routeId có hợp lệ không
+        if (!mongoose.Types.ObjectId.isValid(routeId)) {
+            return res.status(400).json({ error: 'Invalid route ID' });
+        }
+
+        // Tìm tất cả vé thuộc về route này
+        const bookedTickets = await Ticket.find(
+            { route: routeId }, // Chỉ lấy vé đã được đặt (status = 'booked')
+            'seatNumber' // Chỉ lấy trường seatNumber
+        );
+
+        // Trích xuất danh sách ghế đã được đặt
+        const bookedSeats = bookedTickets.map(ticket => ticket.seatNumber);
+
+        // Trả về danh sách ghế đã được đặt
+        res.status(200).json({
+            routeId,
+            bookedSeats,
+        });
+    } catch (error) {
+        console.error('Error fetching booked seats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 
 // 📌 Tạo tuyến đường mới (có thêm ảnh)
 exports.createRoute = async (req, res) => {
