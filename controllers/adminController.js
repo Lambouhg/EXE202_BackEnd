@@ -78,6 +78,28 @@ exports.deleteUser = async (req, res) => {
     }
 };
 
+exports.getUserById = async (req, res) => {
+    try {
+        console.log("User ID received:", req.params.id); // Debug ID nhận được
+
+        if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({ message: "ID không hợp lệ." });
+        }
+
+        const user = await User.findById(req.params.id).select('-password');
+
+        if (!user) {
+            return res.status(404).json({ message: "Người dùng không tồn tại." });
+        }
+
+        res.json(user);
+    } catch (error) {
+        console.error("Lỗi khi lấy thông tin người dùng:", error);
+        res.status(500).json({ message: "Lỗi server khi lấy thông tin người dùng." });
+    }
+};
+
+
 // --- Quản lý Nhà Xe ---
 exports.getBusCompanies = async (req, res) => {
     try {

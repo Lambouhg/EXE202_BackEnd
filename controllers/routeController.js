@@ -168,4 +168,38 @@ exports.searchRoutes = async (req, res) => {
         console.error("Lỗi tìm kiếm tuyến:", error);
         res.status(500).json({ message: "Lỗi server!", error: error.message });
     }
+
+    exports.updateRoute = async (req, res) => {
+        try {
+            const { startPoint, endPoint, stops, price, distance, duration, vehicleType, departureTimes, image } = req.body;
+            const routeId = req.params.id;
+    
+            const route = await Route.findById(routeId);
+            if (!route) {
+                return res.status(404).json({ message: "Tuyến đường không tồn tại!" });
+            }
+    
+            if (vehicleType && !vehicleSeatsMap[vehicleType]) {
+                return res.status(400).json({ message: "Loại xe không hợp lệ!" });
+            }
+    
+            route.startPoint = startPoint || route.startPoint;
+            route.endPoint = endPoint || route.endPoint;
+            route.stops = Array.isArray(stops) ? stops : route.stops;
+            route.price = price || route.price;
+            route.distance = distance || route.distance;
+            route.duration = duration || route.duration;
+            route.vehicleType = vehicleType || route.vehicleType;
+            route.departureTimes = departureTimes || route.departureTimes;
+            route.image = image || route.image;
+    
+            await route.save();
+    
+            return res.status(200).json({ message: "Cập nhật tuyến đường thành công!", route });
+        } catch (error) {
+            console.error("Lỗi cập nhật tuyến:", error);
+            res.status(500).json({ message: "Lỗi server!", error: error.message });
+        }
+    };
+    
 };
