@@ -5,8 +5,8 @@ const busCompanySchema = new mongoose.Schema({
     name: { type: String, required: true },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Liên kết với User
     contact: {
-        phone: { type: String },
-        email: { type: String },
+        phone: { type: String, default: '' }, // Default để tránh undefined
+        email: { type: String, default: '' },
     },
     address: { type: String, required: true },
     imageUrl: { type: String },
