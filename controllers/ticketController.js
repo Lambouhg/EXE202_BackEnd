@@ -64,7 +64,7 @@ exports.getUserTickets = async (req, res) => {
       owner: {
         name: ticket.owner.name,
         email: ticket.owner.email,
-        phone: ticket.owner.phone,
+        phone: ticket.owner.phone,////
       },
       seatNumber: ticket.seatNumber,
       price: ticket.price,
