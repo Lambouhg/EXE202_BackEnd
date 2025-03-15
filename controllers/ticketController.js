@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Ticket = require('../models/Ticket');
 const Route = require('../models/Route');
-
+const BusCompany = require('../models/BusCompany');
 const vehicleSeatsMap = {
   Limousine: 9,
   "Ghế ngồi": 45,
@@ -10,30 +10,74 @@ const vehicleSeatsMap = {
 };
 
 // @desc    Get tickets by user ID
+
+// @desc    Get tickets by user ID
 exports.getUserTickets = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Kiểm tra nếu userId hợp lệ
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ success: false, message: 'Invalid user ID' });
     }
 
-    // Lấy tất cả vé của người dùng
+    // Lấy tất cả vé của người dùng và populate đầy đủ thông tin
     const tickets = await Ticket.find({ owner: userId })
-      .populate('route', 'startPoint endPoint vehicleType')
-      .populate('company', 'name')
-      .populate('owner', 'name email');
+      .populate({
+        path: 'route',
+        select: 'startPoint endPoint vehicleType availableSeats departureTimes price distance duration stops',
+      })
+      .populate({
+        path: 'company',
+        select: 'name contact.phone contact.email address imageUrl',
+      })
+      .populate({
+        path: 'owner',
+        select: 'name email phone',
+      })
+      .lean(); // Chuyển đổi sang object thuần JS
 
     if (!tickets.length) {
       return res.status(404).json({ success: false, message: 'No tickets found for this user' });
     }
 
-    res.status(200).json({ success: true, data: tickets });
+    // Format lại dữ liệu để hiển thị đầy đủ
+    const formattedTickets = tickets.map(ticket => ({
+      ticketId: ticket._id,
+      route: {
+        startPoint: ticket.route.startPoint,
+        endPoint: ticket.route.endPoint,
+        vehicleType: ticket.route.vehicleType,
+        availableSeats: ticket.route.availableSeats,
+        departureTimes: ticket.route.departureTimes,
+        price: ticket.route.price,
+        distance: ticket.route.distance,
+        duration: ticket.route.duration,
+        stops: ticket.route.stops,
+      },
+      company: {
+        name: ticket.company.name,
+        email: ticket.company?.contact?.email || 'N/A',
+        phone: ticket.company?.contact?.phone || 'N/A',
+        address: ticket.company.address,
+        imageUrl: ticket.company.imageUrl || '',
+      },
+      owner: {
+        name: ticket.owner.name,
+        email: ticket.owner.email,
+        phone: ticket.owner.phone,
+      },
+      seatNumber: ticket.seatNumber,
+      price: ticket.price,
+      status: ticket.status,
+      createdAt: ticket.createdAt,
+    }));
+
+    res.status(200).json({ success: true, data: formattedTickets });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 exports.getAllTickets = async (req, res) => {
   try {
