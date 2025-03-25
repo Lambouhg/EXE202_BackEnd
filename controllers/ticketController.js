@@ -64,9 +64,9 @@ exports.getUserTickets = async (req, res) => {
       owner: {
         name: ticket.owner.name,
         email: ticket.owner.email,
-        phone: ticket.owner.phone,////
+        phone: ticket.owner.phone,
       },
-      seatNumber: ticket.seatNumber,
+      seatNumbers: ticket.seatNumbers, // Giữ nguyên danh sách ghế thay vì một số duy nhất
       price: ticket.price,
       status: ticket.status,
       createdAt: ticket.createdAt,
@@ -77,6 +77,7 @@ exports.getUserTickets = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 
 exports.getAllTickets = async (req, res) => {
@@ -96,10 +97,10 @@ exports.createTicket = async (req, res) => {
   try {
     console.log("Dữ liệu nhận từ frontend:", req.body);
 
-    const { route, owner, seatNumber, departureTime } = req.body;
+    const { route, owner, seatNumbers, departureTime } = req.body;
 
-    if (!route || !owner || !seatNumber || !departureTime) {
-      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đặt vé" });
+    if (!route || !owner || !seatNumbers || !departureTime || !Array.isArray(seatNumbers) || seatNumbers.length === 0) {
+      return res.status(400).json({ success: false, message: "Thiếu dữ liệu đặt vé hoặc danh sách ghế không hợp lệ" });
     }
 
     const departureTimeDate = new Date(departureTime);
@@ -121,15 +122,40 @@ exports.createTicket = async (req, res) => {
     if (!isDepartureTimeValid) {
       return res.status(400).json({ success: false, message: "Thời gian khởi hành không hợp lệ với tuyến xe" });
     }
-    const validSeatNumbers = Array.from({ length: vehicleSeatsMap[routeExists.vehicleType] }, (_, i) => (i + 1).toString());
-if (!validSeatNumbers.includes(seatNumber)) {
-  return res.status(400).json({
-    success: false,
-    message: `Số ghế không hợp lệ! Tổng số ghế: ${vehicleSeatsMap[routeExists.vehicleType]}, yêu cầu: ${seatNumber}`,
-  });
-}
 
-    const price = routeExists.price;
+    const validSeatNumbers = Array.from({ length: vehicleSeatsMap[routeExists.vehicleType] }, (_, i) => (i + 1).toString());
+    const invalidSeats = seatNumbers.filter(seat => !validSeatNumbers.includes(seat));
+
+    if (invalidSeats.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Các số ghế không hợp lệ: ${invalidSeats.join(", ")}`,
+      });
+    }
+
+    if (routeExists.availableSeats < seatNumbers.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Không đủ ghế trống! Ghế trống còn lại: ${routeExists.availableSeats}`,
+      });
+    }
+
+    // Kiểm tra xem có ghế nào đã bị đặt chưa
+    const existingTickets = await Ticket.find({
+      route,
+      departureTime: departureTimeDate,
+      seatNumbers: { $in: seatNumbers },
+    });
+
+    if (existingTickets.length > 0) {
+      const takenSeats = existingTickets.flatMap(ticket => ticket.seatNumbers);
+      return res.status(400).json({
+        success: false,
+        message: `Một số ghế đã được đặt: ${takenSeats.join(", ")}. Vui lòng chọn ghế khác.`,
+      });
+    }
+
+    const price = routeExists.price * seatNumbers.length; // Tính tổng giá vé
 
     const ticket = new Ticket({
       route,
@@ -137,7 +163,7 @@ if (!validSeatNumbers.includes(seatNumber)) {
       owner,
       departureTime: departureTimeDate,
       vehicleType: routeExists.vehicleType,
-      seatNumber,
+      seatNumbers,
       price,
     });
 
@@ -145,7 +171,7 @@ if (!validSeatNumbers.includes(seatNumber)) {
 
     // Cập nhật route bằng cách thêm ticket vào mảng tickets
     routeExists.tickets.push(ticket._id);
-    routeExists.availableSeats -= 1;
+    routeExists.availableSeats -= seatNumbers.length;
     await routeExists.save();
 
     res.status(201).json({ success: true, message: "Đặt vé thành công", ticket });

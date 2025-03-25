@@ -11,22 +11,21 @@ const vehicleSeatsMap = {
 
 exports.getBookedSeats = async (req, res) => {
     try {
-        // Lấy routeId từ request params
         const { routeId } = req.params;
 
         // Kiểm tra routeId có hợp lệ không
         if (!mongoose.Types.ObjectId.isValid(routeId)) {
-            return res.status(400).json({ error: 'Invalid route ID' });
+            return res.status(400).json({ error: "Invalid route ID" });
         }
 
-        // Tìm tất cả vé thuộc về route này
+        // Tìm tất cả vé của route này và lấy danh sách ghế từ seatNumbers (mảng)
         const bookedTickets = await Ticket.find(
-            { route: routeId }, // Chỉ lấy vé đã được đặt (status = 'booked')
-            'seatNumber' // Chỉ lấy trường seatNumber
+            { route: routeId },
+            "seatNumbers"
         );
 
-        // Trích xuất danh sách ghế đã được đặt
-        const bookedSeats = bookedTickets.map(ticket => ticket.seatNumber);
+        // Ghép tất cả các ghế lại thành một danh sách duy nhất
+        const bookedSeats = bookedTickets.flatMap(ticket => ticket.seatNumbers);
 
         // Trả về danh sách ghế đã được đặt
         res.status(200).json({
@@ -34,8 +33,8 @@ exports.getBookedSeats = async (req, res) => {
             bookedSeats,
         });
     } catch (error) {
-        console.error('Error fetching booked seats:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error("Error fetching booked seats:", error);
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 
